@@ -1,5 +1,11 @@
 import { addPropertyControls, ControlType, useIsStaticRenderer } from "framer"
-import { useEffect, useMemo, useRef, useState, startTransition, type CSSProperties } from "react"
+import {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type CSSProperties,
+} from "react"
 import { useScroll, useMotionValueEvent } from "framer-motion"
 
 interface ScrollImageSequenceProps {
@@ -10,6 +16,7 @@ interface ScrollImageSequenceProps {
     padding: number
     scrollHeight: number
     objectFit: "cover" | "contain"
+    objectPosition: string
     background: string
     preloadWindow: number
     startIndex: number
@@ -50,17 +57,19 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
         padding = 5,
         scrollHeight = 320,
         objectFit = "cover",
+        objectPosition = "center bottom",
         background = "#000000",
-        preloadWindow = 16,
+        preloadWindow = 24,
         startIndex = 1,
         style,
     } = props
 
     const isStatic = useIsStaticRenderer()
     const trackRef = useRef<HTMLDivElement>(null)
+    const frameRef = useRef(startIndex)
     const [frame, setFrame] = useState(startIndex)
-    const [ready, setReady] = useState(false)
     const cacheRef = useRef<Map<number, HTMLImageElement>>(new Map())
+    const rafRef = useRef(0)
 
     const total = Math.max(2, Math.floor(frameCount))
     const endIndex = startIndex + total - 1
@@ -93,48 +102,38 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
             return img
         }
 
-        const initial: Promise<void>[] = []
-        for (let i = startIndex; i < Math.min(startIndex + 10, endIndex + 1); i++) {
-            const img = loadOne(i)
-            initial.push(
-                img.decode?.().catch(() => undefined) ??
-                    new Promise<void>((resolve) => {
-                        if (img.complete) resolve()
-                        else {
-                            img.onload = () => resolve()
-                            img.onerror = () => resolve()
-                        }
-                    })
-            )
+        for (let i = startIndex; i < Math.min(startIndex + 16, endIndex + 1); i++) {
+            loadOne(i)
         }
 
-        Promise.all(initial).then(() => {
-            if (!cancelled) setReady(true)
-        })
-
-        let next = startIndex + 10
+        let next = startIndex + 16
         const pump = () => {
             if (cancelled || next > endIndex) return
-            const chunkEnd = Math.min(next + 20, endIndex)
+            const chunkEnd = Math.min(next + 24, endIndex)
             for (let i = next; i <= chunkEnd; i++) loadOne(i)
             next = chunkEnd + 1
             if (next <= endIndex) {
                 const ric = (window as any).requestIdleCallback
-                if (typeof ric === "function") ric(pump, { timeout: 500 })
-                else window.setTimeout(pump, 24)
+                if (typeof ric === "function") ric(pump, { timeout: 400 })
+                else window.setTimeout(pump, 16)
             }
         }
         pump()
 
         return () => {
             cancelled = true
+            if (rafRef.current) cancelAnimationFrame(rafRef.current)
         }
     }, [urls, startIndex, endIndex])
 
     useMotionValueEvent(scrollYProgress, "change", (v) => {
         const clamped = Math.min(1, Math.max(0, v))
         const idx = startIndex + Math.round(clamped * (total - 1))
-        startTransition(() => {
+        if (idx === frameRef.current) return
+        frameRef.current = idx
+
+        if (rafRef.current) cancelAnimationFrame(rafRef.current)
+        rafRef.current = requestAnimationFrame(() => {
             setFrame(idx)
             const cache = cacheRef.current
             const from = Math.max(startIndex, idx - preloadWindow)
@@ -150,7 +149,9 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
         })
     })
 
-    const src = urls[Math.min(urls.length - 1, Math.max(0, frame - startIndex))] || urls[0]
+    const src =
+        urls[Math.min(urls.length - 1, Math.max(0, frame - startIndex))] ||
+        urls[0]
     const styledHeight =
         typeof style?.height === "string" && style.height !== "auto"
             ? style.height
@@ -158,6 +159,18 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
     const trackHeight = isStatic
         ? styledHeight ?? "100%"
         : styledHeight ?? `${Math.max(120, scrollHeight)}vh`
+
+    const imgStyle: CSSProperties = {
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit,
+        objectPosition,
+        userSelect: "none",
+        pointerEvents: "none",
+        display: "block",
+    }
 
     return (
         <div
@@ -180,25 +193,9 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
                     height: isStatic ? "100%" : "100vh",
                     overflow: "hidden",
                     background,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
                 }}
             >
-                <img
-                    src={src}
-                    alt=""
-                    draggable={false}
-                    style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit,
-                        opacity: ready || isStatic ? 1 : 0.9,
-                        userSelect: "none",
-                        pointerEvents: "none",
-                        display: "block",
-                    }}
-                />
+                <img src={src} alt="" draggable={false} style={imgStyle} />
             </div>
         </div>
     )
@@ -264,6 +261,11 @@ addPropertyControls(ScrollImageSequence, {
         optionTitles: ["Cover", "Contain"],
         defaultValue: "cover",
     },
+    objectPosition: {
+        type: ControlType.String,
+        title: "Position",
+        defaultValue: "center bottom",
+    },
     background: {
         type: ControlType.Color,
         title: "Background",
@@ -272,9 +274,9 @@ addPropertyControls(ScrollImageSequence, {
     preloadWindow: {
         type: ControlType.Number,
         title: "Preload",
-        defaultValue: 16,
+        defaultValue: 24,
         min: 2,
-        max: 40,
+        max: 60,
         step: 1,
         displayStepper: true,
     },
