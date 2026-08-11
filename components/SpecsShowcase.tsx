@@ -58,7 +58,7 @@ export function SpecsShowcase() {
           transition={{ duration: 0.9 }}
         >
           <Image
-            src="/assets/side-feature.jpg"
+            src="/assets/feat-frame3.jpg"
             alt="Atmos spatial audio driver"
             fill
             className="object-cover"
@@ -91,33 +91,61 @@ export function SpecsShowcase() {
       </div>
 
       <div className="relative mx-auto max-w-[1200px] px-5 py-28 md:px-8">
-        <div className="relative mx-auto aspect-[16/11] max-w-3xl">
-          <Image
-            src="/assets/product.jpg"
-            alt="SONIQ headset"
-            fill
-            className="object-contain"
-            sizes="(max-width:768px) 100vw, 700px"
-          />
-        </div>
-        <div className="mt-10 grid gap-8 md:mt-0 md:grid-cols-3">
-          {fitCallouts.map((item, i) => (
-            <motion.div
-              key={item.title}
-              className="text-center md:text-left"
-              initial={{ opacity: 0, y: 18 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.08, duration: 0.7 }}
-            >
-              <h3 className="font-display text-xl tracking-[-0.03em]">
-                {item.title}
-              </h3>
-              <p className="mt-3 text-sm leading-relaxed text-white/60">
-                {item.body}
-              </p>
-            </motion.div>
-          ))}
+        <div className="relative mx-auto min-h-[520px] max-w-4xl md:min-h-[640px]">
+          <div className="relative mx-auto aspect-[16/11] max-w-2xl md:absolute md:inset-x-0 md:top-1/2 md:mx-auto md:-translate-y-1/2">
+            <Image
+              src="/assets/feat-frame1.jpg"
+              alt="SONIQ headset"
+              fill
+              className="object-contain"
+              sizes="(max-width:768px) 100vw, 700px"
+            />
+          </div>
+
+          <motion.div
+            className="mt-8 max-w-xs md:absolute md:right-0 md:top-8 md:mt-0 md:text-right"
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+          >
+            <h3 className="font-display text-xl tracking-[-0.03em]">
+              {fitCallouts[0].title}
+            </h3>
+            <p className="mt-3 text-sm leading-relaxed text-white/60">
+              {fitCallouts[0].body}
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="mt-6 max-w-xs md:absolute md:bottom-10 md:left-0 md:mt-0"
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.08, duration: 0.7 }}
+          >
+            <h3 className="font-display text-xl tracking-[-0.03em]">
+              {fitCallouts[1].title}
+            </h3>
+            <p className="mt-3 text-sm leading-relaxed text-white/60">
+              {fitCallouts[1].body}
+            </p>
+          </motion.div>
+
+          <motion.div
+            className="mt-6 max-w-xs md:absolute md:bottom-10 md:right-0 md:mt-0 md:text-right"
+            initial={{ opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.16, duration: 0.7 }}
+          >
+            <h3 className="font-display text-xl tracking-[-0.03em]">
+              {fitCallouts[2].title}
+            </h3>
+            <p className="mt-3 text-sm leading-relaxed text-white/60">
+              {fitCallouts[2].body}
+            </p>
+          </motion.div>
         </div>
       </div>
     </section>

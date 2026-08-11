@@ -170,17 +170,17 @@ export const useCases = [
   {
     title: "Play & Explore",
     body: "Dive into immersive games, cinematic worlds, and interactive adventures that respond naturally to every movement and action.",
-    image: "/assets/feat-frame1.jpg",
+    image: "/assets/landscape-still.jpg",
   },
   {
     title: "Watch & Experience",
     body: "Enjoy movies, live events, and virtual environments on a massive immersive screen that surrounds you with sound and detail.",
-    image: "/assets/feat-frame2.jpg",
+    image: "/assets/side-feature.jpg",
   },
   {
     title: "Work & Connect",
     body: "Meet, collaborate, and share moments in virtual spaces that feel personal, natural, and surprisingly real.",
-    image: "/assets/feat-frame3.jpg",
+    image: "/assets/product.jpg",
   },
 ];
 
