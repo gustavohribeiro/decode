@@ -248,14 +248,28 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
                         zIndex: 2,
                         width: "100%",
                         minHeight: `${holdVh}vh`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                         background: overlayFill,
                         backdropFilter: `blur(${overlayBlur}px)`,
                         WebkitBackdropFilter: `blur(${overlayBlur}px)`,
-                        borderTop: "1px solid rgba(255,255,255,0.12)",
+                        borderTop: "1px solid rgba(255,255,255,0.08)",
                         boxSizing: "border-box",
+                        padding: "48px 24px",
                     }}
                 >
-                    {overlay}
+                    <div
+                        style={{
+                            width: "100%",
+                            maxWidth: 1100,
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                        }}
+                    >
+                        {overlay}
+                    </div>
                 </div>
             </div>
         </div>
