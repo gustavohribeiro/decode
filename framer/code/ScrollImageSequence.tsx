@@ -151,7 +151,13 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
     })
 
     const src = urls[Math.min(urls.length - 1, Math.max(0, frame - startIndex))] || urls[0]
-    const trackHeight = isStatic ? style?.height ?? "100%" : `${Math.max(120, scrollHeight)}vh`
+    const styledHeight =
+        typeof style?.height === "string" && style.height !== "auto"
+            ? style.height
+            : null
+    const trackHeight = isStatic
+        ? styledHeight ?? "100%"
+        : styledHeight ?? `${Math.max(120, scrollHeight)}vh`
 
     return (
         <div
