@@ -5,6 +5,7 @@ import {
     useRef,
     useState,
     type CSSProperties,
+    type ReactNode,
 } from "react"
 import { useScroll, useMotionValueEvent } from "framer-motion"
 
@@ -15,11 +16,15 @@ interface ScrollImageSequenceProps {
     frameCount: number
     padding: number
     scrollHeight: number
+    holdHeight: number
     objectFit: "cover" | "contain"
     objectPosition: string
     background: string
     preloadWindow: number
     startIndex: number
+    overlay: ReactNode
+    overlayFill: string
+    overlayBlur: number
     style?: CSSProperties
 }
 
@@ -41,7 +46,9 @@ function frameUrl(
 }
 
 /**
- * Scroll-scrubbed image sequence (SONIQ / Interactive Studio style).
+ * Sticky scroll image sequence. Scrubs frames, then holds the last frame
+ * while slotted overlay content (e.g. Designed Around You) scrolls over
+ * with a frosted/blurred panel — matching the SONIQ reference.
  *
  * @framerSupportedLayoutWidth any-prefer-fixed
  * @framerSupportedLayoutHeight any-prefer-fixed
@@ -55,12 +62,16 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
         extension = ".jpg",
         frameCount = 283,
         padding = 5,
-        scrollHeight = 320,
+        scrollHeight = 280,
+        holdHeight = 120,
         objectFit = "cover",
         objectPosition = "center bottom",
         background = "#000000",
         preloadWindow = 24,
         startIndex = 1,
+        overlay = null,
+        overlayFill = "rgba(0, 0, 0, 0.22)",
+        overlayBlur = 50,
         style,
     } = props
 
@@ -73,7 +84,10 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
 
     const total = Math.max(2, Math.floor(frameCount))
     const endIndex = startIndex + total - 1
+    const scrubVh = Math.max(120, scrollHeight)
+    const holdVh = Math.max(40, holdHeight)
 
+    // Progress is measured across scrub + hold spacers only.
     const { scrollYProgress } = useScroll({
         target: trackRef,
         offset: ["start start", "end end"],
@@ -102,7 +116,11 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
             return img
         }
 
-        for (let i = startIndex; i < Math.min(startIndex + 16, endIndex + 1); i++) {
+        for (
+            let i = startIndex;
+            i < Math.min(startIndex + 16, endIndex + 1);
+            i++
+        ) {
             loadOne(i)
         }
 
@@ -127,8 +145,9 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
     }, [urls, startIndex, endIndex])
 
     useMotionValueEvent(scrollYProgress, "change", (v) => {
-        const clamped = Math.min(1, Math.max(0, v))
-        const idx = startIndex + Math.round(clamped * (total - 1))
+        const scrubPortion = scrubVh / (scrubVh + holdVh)
+        const local = Math.min(1, Math.max(0, v / Math.max(0.0001, scrubPortion)))
+        const idx = startIndex + Math.round(local * (total - 1))
         if (idx === frameRef.current) return
         frameRef.current = idx
 
@@ -152,13 +171,6 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
     const src =
         urls[Math.min(urls.length - 1, Math.max(0, frame - startIndex))] ||
         urls[0]
-    const styledHeight =
-        typeof style?.height === "string" && style.height !== "auto"
-            ? style.height
-            : null
-    const trackHeight = isStatic
-        ? styledHeight ?? "100%"
-        : styledHeight ?? `${Math.max(120, scrollHeight)}vh`
 
     const imgStyle: CSSProperties = {
         position: "absolute",
@@ -172,30 +184,79 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
         display: "block",
     }
 
+    if (isStatic) {
+        return (
+            <div
+                style={{
+                    ...style,
+                    position: "relative",
+                    width: "100%",
+                    height: style?.height ?? "100%",
+                    background,
+                    overflow: "hidden",
+                }}
+            >
+                <img src={src} alt="" draggable={false} style={imgStyle} />
+            </div>
+        )
+    }
+
     return (
         <div
-            ref={trackRef}
             style={{
                 ...style,
                 position: "relative",
                 width: style?.width ?? "100%",
-                height: trackHeight,
-                background,
+                height: style?.height && style.height !== "auto" ? style.height : `${scrubVh + holdVh}vh`,
+                minHeight: `${scrubVh + holdVh}vh`,
                 maxWidth: "100%",
+                background,
             }}
         >
+            {/* Sticky media plane */}
             <div
                 style={{
-                    position: isStatic ? "relative" : "sticky",
+                    position: "sticky",
                     top: 0,
-                    left: 0,
                     width: "100%",
-                    height: isStatic ? "100%" : "100vh",
+                    height: "100vh",
                     overflow: "hidden",
                     background,
+                    zIndex: 0,
                 }}
             >
                 <img src={src} alt="" draggable={false} style={imgStyle} />
+            </div>
+
+            {/* Scroll track pulled up over the sticky viewport */}
+            <div
+                ref={trackRef}
+                style={{
+                    position: "relative",
+                    marginTop: "-100vh",
+                    zIndex: 1,
+                    width: "100%",
+                }}
+            >
+                {/* Scrub distance — frames advance here */}
+                <div style={{ height: `${scrubVh}vh`, width: "100%" }} />
+
+                {/* Hold + overlay (Designed Around You) scrolls over last frame */}
+                <div
+                    style={{
+                        position: "relative",
+                        zIndex: 2,
+                        width: "100%",
+                        minHeight: `${holdVh}vh`,
+                        background: overlayFill,
+                        backdropFilter: `blur(${overlayBlur}px)`,
+                        WebkitBackdropFilter: `blur(${overlayBlur}px)`,
+                        borderTop: "1px solid rgba(255,255,255,0.12)",
+                        boxSizing: "border-box",
+                    }}
+                >
+                    {overlay}
+                </div>
             </div>
         </div>
     )
@@ -247,10 +308,19 @@ addPropertyControls(ScrollImageSequence, {
     },
     scrollHeight: {
         type: ControlType.Number,
-        title: "Scroll VH",
-        defaultValue: 320,
+        title: "Scrub VH",
+        defaultValue: 280,
         min: 120,
         max: 800,
+        step: 10,
+        unit: "vh",
+    },
+    holdHeight: {
+        type: ControlType.Number,
+        title: "Hold VH",
+        defaultValue: 120,
+        min: 40,
+        max: 300,
         step: 10,
         unit: "vh",
     },
@@ -279,5 +349,23 @@ addPropertyControls(ScrollImageSequence, {
         max: 60,
         step: 1,
         displayStepper: true,
+    },
+    overlayFill: {
+        type: ControlType.Color,
+        title: "Overlay Fill",
+        defaultValue: "rgba(0,0,0,0.22)",
+    },
+    overlayBlur: {
+        type: ControlType.Number,
+        title: "Overlay Blur",
+        defaultValue: 50,
+        min: 0,
+        max: 80,
+        step: 1,
+        unit: "px",
+    },
+    overlay: {
+        type: ControlType.Slot,
+        title: "Overlay",
     },
 })
