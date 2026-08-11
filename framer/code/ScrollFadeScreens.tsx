@@ -62,12 +62,25 @@ export default function ScrollFadeScreens(props: ScrollFadeScreensProps) {
 
     const opacities = useMemo(() => {
         if (count <= 1) return [1]
-        // progress 0→1 maps across screens 0→count-1; adjacent screens crossfade
-        const index = progress * (count - 1)
-        const spread = Math.min(1, Math.max(0.35, fadeSpread * 2))
+        // Fade through black: current fades out, then next fades in (no overlap).
+        // fadeSpread controls how much of each step is the fade vs hold (0.1–0.45).
+        const t = progress * (count - 1)
+        const i0 = Math.min(count - 1, Math.floor(t))
+        const frac = t - i0
+        const fade = Math.min(0.49, Math.max(0.12, fadeSpread))
+        // Hold until (1 - fade), then animate; first half of fade = out, second = in
         return items.map((_, i) => {
-            const dist = Math.abs(index - i)
-            return Math.max(0, Math.min(1, 1 - dist / spread))
+            if (i0 >= count - 1) return i === count - 1 ? 1 : 0
+            if (frac <= 1 - fade) return i === i0 ? 1 : 0
+            const local = (frac - (1 - fade)) / fade // 0..1 within fade window
+            if (local <= 0.5) {
+                // fade out current
+                if (i === i0) return 1 - local * 2
+                return 0
+            }
+            // fade in next
+            if (i === i0 + 1) return (local - 0.5) * 2
+            return 0
         })
     }, [progress, count, fadeSpread, items])
 
