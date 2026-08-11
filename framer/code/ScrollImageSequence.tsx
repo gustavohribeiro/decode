@@ -79,6 +79,8 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
     const trackRef = useRef<HTMLDivElement>(null)
     const frameRef = useRef(startIndex)
     const [frame, setFrame] = useState(startIndex)
+    const fadeRef = useRef(0)
+    const [fade, setFade] = useState(0)
     const cacheRef = useRef<Map<number, HTMLImageElement>>(new Map())
     const rafRef = useRef(0)
 
@@ -145,6 +147,16 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
     }, [urls, startIndex, endIndex])
 
     useMotionValueEvent(scrollYProgress, "change", (v) => {
+        // Fade the sequence to black once the overlay's top reaches the
+        // viewport top (scrolled past the scrub distance).
+        const scrollRange = Math.max(1, scrubVh + holdVh - 100)
+        const fadeStart = Math.min(0.98, scrubVh / scrollRange)
+        const f = Math.min(1, Math.max(0, (v - fadeStart) / (1 - fadeStart)))
+        if (Math.abs(f - fadeRef.current) > 0.01 || (f === 0) !== (fadeRef.current === 0)) {
+            fadeRef.current = f
+            setFade(f)
+        }
+
         const scrubPortion = scrubVh / (scrubVh + holdVh)
         const local = Math.min(1, Math.max(0, v / Math.max(0.0001, scrubPortion)))
         const idx = startIndex + Math.round(local * (total - 1))
@@ -226,6 +238,17 @@ export default function ScrollImageSequence(props: ScrollImageSequenceProps) {
                 }}
             >
                 <img src={src} alt="" draggable={false} style={imgStyle} />
+                {/* Scroll-linked fade to black while the overlay passes */}
+                <div
+                    aria-hidden
+                    style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "#000000",
+                        opacity: fade,
+                        pointerEvents: "none",
+                    }}
+                />
             </div>
 
             {/* Scroll track pulled up over the sticky viewport */}
